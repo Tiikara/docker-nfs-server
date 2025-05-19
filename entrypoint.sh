@@ -271,16 +271,6 @@ is_kernel_module_loaded() {
   return 1
 }
 
-is_granted_linux_capability() {
-
-  if capsh --print | grep -Eq "^Current: = .*,?${1}(,|$)"; then
-    return 0
-  fi
-
-  return 1
-}
-
-
 ######################################################################################
 ### runtime configuration assertions
 ######################################################################################
@@ -298,10 +288,6 @@ assert_kernel_mod() {
 
   if is_kernel_module_loaded "$module"; then
     return
-  fi
-
-  if [[ ! -d /lib/modules ]] || ! is_granted_linux_capability 'sys_module'; then
-    bail "$module module is not loaded in the Docker host's kernel (try: modprobe $module)"
   fi
 
   log "attempting to load kernel module $module"
@@ -489,10 +475,6 @@ init_exports() {
 
 init_runtime_assertions() {
 
-  if ! is_granted_linux_capability 'cap_sys_admin'; then
-    bail 'missing CAP_SYS_ADMIN. be sure to run this image with --cap-add SYS_ADMIN or --privileged'
-  fi
-
   # check kernel modules
   assert_kernel_mod nfs
   assert_kernel_mod nfsd
@@ -530,7 +512,7 @@ boot_helper_mount() {
 boot_helper_get_version_flags() {
 
   local -r requested_version="${state[$STATE_NFS_VERSION]}"
-  local flags=('--nfs-version' "$requested_version" '--no-nfs-version' 2)
+  local flags=('--nfs-version' "$requested_version")
 
   if ! is_nfs3_enabled; then
     flags+=('--no-nfs-version' 3)
